@@ -64,3 +64,6 @@ mypy_cache/
 pytype/
 # Build artifacts from Cython or other tools
 cython_debug/
+# Database files
+*.db
+*.sqlite
