@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Tracker</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>Pomodoro Tracker</h1>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" onclick="switchTab('goals')">Goals</button>
+      <button class="tab" onclick="switchTab('timer')">Pomodoro</button>
+      <button class="tab" onclick="switchTab('log')">Log</button>
+    </nav>
+
+    <!-- GOALS TAB -->
+    <section id="tab-goals">
+      <div class="section-label">Add a goal</div>
+      <div class="card">
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="goal-input" placeholder="Goal title…" class="grow" />
+          <select id="goal-cat">
+            <option value="work">Work</option>
+            <option value="learning">Learning</option>
+            <option value="health">Health</option>
+            <option value="personal">Personal</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="row">
+          <input type="text" id="goal-note" placeholder="Description (optional)…" class="grow" />
+          <button class="btn btn-primary" onclick="addGoal()">Add goal</button>
+        </div>
+      </div>
+      <div class="section-label" style="margin-top:1.25rem">Your goals</div>
+      <div id="goals-list"><div class="empty">Loading…</div></div>
+    </section>
+
+    <!-- TIMER TAB -->
+    <section id="tab-timer" style="display:none">
+      <div class="card" style="margin-bottom:12px">
+        <div class="section-label" style="margin-bottom:8px">Select goal for this session</div>
+        <select id="timer-goal-select" style="width:100%;margin-bottom:12px" onchange="updateTimerGoal()">
+          <option value="">— choose a goal —</option>
+        </select>
+        <div id="timer-subgoals-section" style="display:none;margin-bottom:12px">
+          <div class="section-label" style="margin-bottom:6px">Pending sub-goals</div>
+          <div id="timer-subgoals-list"></div>
+        </div>
+        <div class="row" style="justify-content:center;gap:16px;margin-bottom:4px">
+          <div style="text-align:center">
+            <div class="section-label">Work (min)</div>
+            <input type="number" id="pomo-work" value="25" min="1" max="120" style="width:64px;text-align:center" />
+          </div>
+          <div style="text-align:center">
+            <div class="section-label">Break (min)</div>
+            <input type="number" id="pomo-break" value="5" min="1" max="60" style="width:64px;text-align:center" />
+          </div>
+        </div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="timer-label" id="timer-phase">Work session</div>
+        <div class="timer-goal" id="timer-goal-name">No goal selected</div>
+        <div class="timer-display" id="timer-display">25:00</div>
+        <div class="pb-bg"><div class="pb-fill" id="timer-progress" style="width:100%"></div></div>
+        <div class="row" style="justify-content:center;gap:12px">
+          <button class="btn btn-primary" id="timer-btn" onclick="toggleTimer()">Start</button>
+          <button class="btn" onclick="resetTimer()">Reset</button>
+        </div>
+        <div class="timer-footer" id="session-count">Pomodoros today: 0</div>
+      </div>
+    </section>
+
+    <!-- LOG TAB -->
+    <section id="tab-log" style="display:none">
+      <div class="stats-grid">
+        <div class="mc"><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Total pomodoros</div></div>
+        <div class="mc"><div class="stat-num" id="stat-hours">—</div><div class="stat-lbl">Total focus time</div></div>
+        <div class="mc"><div class="stat-num" id="stat-subgoals">—</div><div class="stat-lbl">Sub-goals done</div></div>
+      </div>
+      <div class="section-label">Time by goal</div>
+      <div id="log-by-goal" style="margin-bottom:1rem"></div>
+      <div class="section-label">Session history</div>
+      <div class="card" id="log-list"><div class="empty">Loading…</div></div>
+    </section>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
