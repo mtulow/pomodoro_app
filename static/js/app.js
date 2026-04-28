@@ -30,6 +30,10 @@ let isBreak       = false;
 let secondsLeft   = 0;
 let totalSeconds  = 0;
 
+// Alert preferences (persisted to localStorage)
+let soundEnabled  = localStorage.getItem("pomo_sound") !== "false";
+let notifEnabled  = localStorage.getItem("pomo_notif") !== "false";
+
 // ---------------------------------------------------------------------------
 // Tabs
 // ---------------------------------------------------------------------------
@@ -235,7 +239,125 @@ function esc(str) {
 }
 
 // ---------------------------------------------------------------------------
-// Timer  —  wall-clock anchored + requestAnimationFrame render loop
+// Sound  —  Web Audio API chime (no audio files needed)
+// ---------------------------------------------------------------------------
+
+let _audioCtx = null;
+
+function getAudioCtx() {
+  // Lazily create so we don't trigger autoplay policy before user interaction
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _audioCtx;
+}
+
+function playChime(isWorkEnd) {
+  if (!soundEnabled) return;
+  try {
+    const ctx   = getAudioCtx();
+    // Work end: ascending major arpeggio (C5 → E5 → G5 → C6)
+    // Break end: two soft descending tones
+    const notes = isWorkEnd
+      ? [523.25, 659.25, 783.99, 1046.50]
+      : [783.99, 523.25];
+    const stepMs = 0.18;
+
+    notes.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type            = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * stepMs;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.02);   // quick attack
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45); // natural decay
+      osc.start(t);
+      osc.stop(t + 0.5);
+    });
+  } catch (e) {
+    console.warn("Audio playback failed:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Browser Notifications
+// ---------------------------------------------------------------------------
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    await Notification.requestPermission();
+  }
+  // Reflect actual permission in the toggle after the user responds
+  syncNotifToggle();
+}
+
+function sendNotification(title, body) {
+  if (!notifEnabled) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, { body, silent: true });
+    // Auto-close after 8 seconds
+    setTimeout(() => n.close(), 8000);
+  } catch (e) {
+    console.warn("Notification failed:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Alert toggles
+// ---------------------------------------------------------------------------
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("pomo_sound", soundEnabled);
+  syncSoundToggle();
+  // Play a quick preview so the user knows it's working
+  if (soundEnabled) playChime(true);
+}
+
+function toggleNotif() {
+  if (!notifEnabled && Notification.permission === "default") {
+    // Need to request permission first — can only do this on user gesture
+    Notification.requestPermission().then(perm => {
+      notifEnabled = perm === "granted";
+      localStorage.setItem("pomo_notif", notifEnabled);
+      syncNotifToggle();
+    });
+  } else {
+    notifEnabled = !notifEnabled;
+    localStorage.setItem("pomo_notif", notifEnabled);
+    syncNotifToggle();
+  }
+}
+
+function syncSoundToggle() {
+  const btn  = document.getElementById("toggle-sound");
+  const icon = document.getElementById("sound-icon");
+  if (!btn) return;
+  btn.classList.toggle("active", soundEnabled);
+  btn.title = soundEnabled ? "Sound on — click to mute" : "Sound off — click to enable";
+  if (icon) icon.textContent = soundEnabled ? "🔔" : "🔕";
+}
+
+function syncNotifToggle() {
+  const btn   = document.getElementById("toggle-notif");
+  const icon  = document.getElementById("notif-icon");
+  const label = document.getElementById("notif-label");
+  if (!btn) return;
+  const granted = "Notification" in window && Notification.permission === "granted";
+  const active  = notifEnabled && granted;
+  btn.classList.toggle("active", active);
+  btn.title = active ? "Notifications on — click to disable" : "Notifications off — click to enable";
+  if (icon)  icon.textContent  = active ? "🔔" : "🔕";
+  if (label) label.textContent = active ? "Notify" : "Notify";
+  // Dim the button if browser permission was denied
+  btn.style.opacity = ("Notification" in window && Notification.permission === "denied") ? "0.4" : "";
+  btn.style.cursor  = ("Notification" in window && Notification.permission === "denied") ? "not-allowed" : "";
+}
+
+
 //
 // How it works:
 //   - `deadlineAt` stores the exact Date.now() timestamp when the current
@@ -311,6 +433,8 @@ async function onPhaseEnd() {
 
   if (!isBreak) {
     // Work phase just finished — log the session
+    playChime(true);
+    sendNotification("🍅 Work session complete!", "Great focus. Time to take a break.");
     const mins = parseInt(document.getElementById("pomo-work").value) || 25;
     if (currentGoalId) {
       await post("/api/sessions", { goal_id: currentGoalId, mins });
@@ -325,6 +449,8 @@ async function onPhaseEnd() {
     document.getElementById("timer-phase").textContent = "Work complete! 🍅";
   } else {
     // Break just finished — ready for next work session
+    playChime(false);
+    sendNotification("⏰ Break over!", "Ready to get back to work?");
     isBreak      = false;
     totalSeconds = getWorkSecs();
     secondsLeft  = totalSeconds;
@@ -507,6 +633,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadGoals();
   initTimer();
   updateTodayCount();
+
+  // Initialise alert toggles
+  syncSoundToggle();
+  syncNotifToggle();
+
+  // Request notification permission on load (only prompts if "default")
+  await requestNotificationPermission();
 
   document.getElementById("goal-input").addEventListener("keydown", e => {
     if (e.key === "Enter") addGoal();

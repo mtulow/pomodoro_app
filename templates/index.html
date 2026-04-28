@@ -26,11 +26,12 @@
           <input type="text" id="goal-input" placeholder="Goal title…" class="grow" />
           <input type="text" id="goal-cat" list="cat-suggestions" placeholder="Category…" style="width:140px" autocomplete="off" />
           <datalist id="cat-suggestions">
-            <option value="Career">
-            <option value="Academics">
-            <option value="Finance">
+            <option value="Work">
+            <option value="Learning">
             <option value="Health">
-            <option value="Athletics">
+            <option value="Personal">
+            <option value="Finance">
+            <option value="Creative">
             <option value="Other">
           </datalist>
         </div>
@@ -73,6 +74,14 @@
         <div class="row" style="justify-content:center;gap:12px">
           <button class="btn btn-primary" id="timer-btn" onclick="toggleTimer()">Start</button>
           <button class="btn" onclick="resetTimer()">Reset</button>
+        </div>
+        <div class="alert-toggles">
+          <button class="alert-toggle-btn" id="toggle-sound" onclick="toggleSound()" title="Toggle sound">
+            <span id="sound-icon">🔔</span> Sound
+          </button>
+          <button class="alert-toggle-btn" id="toggle-notif" onclick="toggleNotif()" title="Toggle notifications">
+            <span id="notif-icon">🔔</span> <span id="notif-label">Notify</span>
+          </button>
         </div>
         <div class="timer-footer" id="session-count">Pomodoros today: 0</div>
       </div>

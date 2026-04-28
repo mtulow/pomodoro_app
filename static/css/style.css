@@ -227,3 +227,33 @@ select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0
   border-bottom: 0.5px solid var(--border);
 }
 .log-row:last-child { border-bottom: none; }
+
+/* ── Alert toggles (sound + notifications) ── */
+.alert-toggles {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+
+.alert-toggle-btn {
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 0.5px solid var(--border-hover);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background .15s, color .15s, border-color .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.alert-toggle-btn:hover { background: var(--bg-secondary); }
+.alert-toggle-btn.active {
+  background: var(--bg-success);
+  color: var(--text-success);
+  border-color: var(--text-success);
+  font-weight: 500;
+}

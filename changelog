@@ -1,8 +1,12 @@
 # Changelog
 
+---
+
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
 
 ## [Unreleased]
 
@@ -24,20 +28,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-04-28
+
+### v1.4.0 Added
+
+- Completion chime via Web Audio API (`playChime(isWorkEnd)`) — no audio files required. Work sessions end with an ascending 4-note major arpeggio (C5→E5→G5→C6); breaks end with two softer descending tones. Each note uses a quick linear attack and exponential decay for a natural sound.
+- Browser notification support (`sendNotification(title, body)`) using the Notifications API. Fires even when the tab is in the background; notifications auto-close after 8 seconds.
+- `requestNotificationPermission()` called on boot — prompts the user once if permission is `"default"`, does nothing if already granted or denied.
+- Sound and notification toggle buttons ("Sound" / "Notify") in the timer card, styled as pill-shaped toggles that highlight green when active.
+- `toggleSound()` and `toggleNotif()` functions — flip preferences, persist state to `localStorage`, and sync button visuals. Enabling sound plays an immediate preview chime.
+- `syncSoundToggle()` and `syncNotifToggle()` functions keep button state consistent with both user preference and actual browser permission. Notification button dims with reduced opacity if browser permission was permanently denied.
+- `AudioContext` created lazily on first use to comply with browser autoplay policies.
+
+### v1.4.0 Changed
+
+- `onPhaseEnd()` now calls `playChime()` and `sendNotification()` at the start of each phase transition before logging the session.
+- Alert preferences default to enabled and survive page reloads via `localStorage` (`pomo_sound`, `pomo_notif` keys).
+
+---
+
 ## [1.3.0] - 2026-04-28
 
-### Changed
+### v1.3.0 Changed
 
 - Replaced `setInterval`-based countdown with wall-clock anchoring using `deadlineAt` (`Date.now()` timestamp of phase end), making drift structurally impossible.
 - Replaced the `setInterval` render loop with a `requestAnimationFrame` loop (`rafTick`) for smooth, browser-native display updates at the display's refresh rate.
 - Pause now snapshots remaining milliseconds (`pausedMsLeft`); resume shifts `deadlineAt` forward by that exact amount so no time is lost or gained.
 
-### Added
+### v1.3.0 Added
 
 - Page Visibility API integration: `visibilitychange` listener calls `onVisible()` when the tab regains focus, immediately resyncing the display from wall-clock time and restarting the rAF loop.
 - `sessionFired` guard flag to ensure a completed session is logged exactly once even if the tab was hidden when the timer expired.
 
-### Removed
+### v1.3.0 Removed
 
 - `timerInterval` state variable and all `setInterval` / `clearInterval` calls.
 
@@ -45,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2026-04-27
 
-### Added
+### v1.2.0 Added
 
 - Free-text category input (`<input>` + `<datalist>`) replacing the fixed `<select>`, allowing any custom category to be entered (e.g. "Music", "Side project").
 - Default suggestions datalist pre-populated with: Work, Learning, Health, Personal, Finance, Creative, Other.
@@ -54,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `refreshCatSuggestions()` function that merges goals in memory with `/api/categories` results to keep the datalist up to date across page reloads.
 - `/api/categories` endpoint (`GET`) returning all distinct categories currently stored in the database, sorted alphabetically.
 
-### Changed
+### v1.2.0 Changed
 
 - `addGoal()` now reads the category text input instead of a select value, defaulting to "Other" if left blank.
 - `loadGoals()` now calls `refreshCatSuggestions()` after every fetch so newly created categories appear as suggestions immediately.
@@ -64,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-04-27
 
-### Added
+### v1.1.0 Added
 
 - Sub-goals support: each goal can have any number of sub-goals with a `status` of `pending`, `done`, or `failed`.
 - Sub-goals panel per goal card (expand/collapse via ▼/▲ toggle showing sub-goal count).
@@ -83,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2026-04-14
 
-### Added
+### v1.0.0 Added
 
 - Initial release of **pomodoro_app**.
 - Flask + SQLite backend with REST API (`goals`, `sessions`, `stats` endpoints).
@@ -97,8 +120,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/mtulow/pomodoro_app/compare/v1.3.0...HEAD  
-[1.3.0]: https://github.com/mtulow/pomodoro_app/compare/v1.2.0...v1.3.0  
-[1.2.0]: https://github.com/mtulow/pomodoro_app/compare/v1.1.0...v1.2.0  
-[1.1.0]: https://github.com/mtulow/pomodoro_app/compare/v1.0.0...v1.1.0  
+[Unreleased]: https://github.com/mtulow/pomodoro_app/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/mtulow/pomodoro_app/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/mtulow/pomodoro_app/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/mtulow/pomodoro_app/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/mtulow/pomodoro_app/releases/tag/v1.0.0
