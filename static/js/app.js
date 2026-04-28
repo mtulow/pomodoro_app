@@ -25,7 +25,6 @@ let expanded = {};
 let currentGoalId = null;
 
 // Timer state
-let timerInterval = null;
 let timerRunning  = false;
 let isBreak       = false;
 let secondsLeft   = 0;
@@ -119,8 +118,8 @@ async function deleteSubgoal(subId) {
 
 // Map well-known categories to badge colours; unknown ones cycle through the palette.
 const CAT_PRESETS = {
-  career: "badge-info", academics: "badge-warn", finance: "badge-warn", health: "badge-success",
-  athletics: "badge-info", other: "badge-info",
+  work: "badge-info", learning: "badge-warn", health: "badge-success",
+  personal: "badge-info", finance: "badge-warn", creative: "badge-success", other: "badge-info",
 };
 const BADGE_CYCLE = ["badge-info", "badge-warn", "badge-success"];
 const _catColorCache = {};
@@ -147,7 +146,7 @@ async function refreshCatSuggestions() {
   // Also pull any categories stored in DB that might not be in current page state
   let fromDb = [];
   try { fromDb = await get("/api/categories"); } catch (_) {}
-  const defaults = ["Career","Academics","Finance","Health","Athletics","Other"];
+  const defaults = ["Work","Learning","Health","Personal","Finance","Creative","Other"];
   const all = [...new Set([
     ...defaults,
     ...seen.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
@@ -236,17 +235,187 @@ function esc(str) {
 }
 
 // ---------------------------------------------------------------------------
-// Timer
+// Timer  —  wall-clock anchored + requestAnimationFrame render loop
+//
+// How it works:
+//   - `deadlineAt` stores the exact Date.now() timestamp when the current
+//     phase (work or break) should end.
+//   - A requestAnimationFrame loop runs continuously while the timer is
+//     active, computing secondsLeft = ceil((deadlineAt - now) / 1000) on
+//     every frame. This means the display is always derived from real wall
+//     time, never from a counted tick — drift is impossible.
+//   - Pausing snapshots the remaining ms; resuming shifts deadlineAt
+//     forward by that amount so no time is lost.
+//   - The Page Visibility API fires onVisible() whenever the tab regains
+//     focus, which immediately redraws the correct time (important because
+//     browsers throttle rAF in background tabs).
 // ---------------------------------------------------------------------------
 
 function getWorkSecs()  { return (parseInt(document.getElementById("pomo-work").value)  || 25) * 60; }
 function getBreakSecs() { return (parseInt(document.getElementById("pomo-break").value) || 5)  * 60; }
 
+// Wall-clock timer state
+let deadlineAt    = null;  // Date.now() ms when current phase ends
+let pausedMsLeft  = null;  // ms remaining when paused
+let rafId         = null;  // requestAnimationFrame handle
+let sessionFired  = false; // guard so onPhaseEnd runs exactly once
+
 function initTimer() {
-  isBreak     = false;
-  secondsLeft = totalSeconds = getWorkSecs();
-  renderTimerDisplay();
+  stopRaf();
+  isBreak      = false;
+  timerRunning = false;
+  deadlineAt   = null;
+  pausedMsLeft = null;
+  sessionFired = false;
+  totalSeconds = getWorkSecs();
+  secondsLeft  = totalSeconds;
+  renderTimerDisplay(secondsLeft);
+  document.getElementById("timer-btn").textContent = "Start";
+  document.getElementById("timer-phase").textContent = "Work session";
 }
+
+// --- rAF loop ---
+
+function startRaf() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(rafTick);
+}
+
+function stopRaf() {
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+}
+
+function rafTick() {
+  if (!timerRunning || !deadlineAt) { rafId = null; return; }
+
+  const msLeft = deadlineAt - Date.now();
+  secondsLeft  = Math.max(0, Math.ceil(msLeft / 1000));
+
+  renderTimerDisplay(secondsLeft);
+
+  if (msLeft <= 0 && !sessionFired) {
+    sessionFired = true;
+    stopRaf();
+    onPhaseEnd();
+    return;
+  }
+
+  rafId = requestAnimationFrame(rafTick);
+}
+
+// --- Phase transitions ---
+
+async function onPhaseEnd() {
+  timerRunning = false;
+  deadlineAt   = null;
+
+  if (!isBreak) {
+    // Work phase just finished — log the session
+    const mins = parseInt(document.getElementById("pomo-work").value) || 25;
+    if (currentGoalId) {
+      await post("/api/sessions", { goal_id: currentGoalId, mins });
+      await loadGoals();
+      await updateTodayCount();
+    }
+    isBreak      = true;
+    totalSeconds = getBreakSecs();
+    secondsLeft  = totalSeconds;
+    sessionFired = false;
+    document.getElementById("timer-btn").textContent  = "Start break";
+    document.getElementById("timer-phase").textContent = "Work complete! 🍅";
+  } else {
+    // Break just finished — ready for next work session
+    isBreak      = false;
+    totalSeconds = getWorkSecs();
+    secondsLeft  = totalSeconds;
+    sessionFired = false;
+    document.getElementById("timer-btn").textContent  = "Start";
+    document.getElementById("timer-phase").textContent = "Break over — ready?";
+  }
+
+  renderTimerDisplay(secondsLeft);
+}
+
+// --- Controls ---
+
+function toggleTimer() {
+  if (!timerRunning) {
+    // Start or resume
+    if (pausedMsLeft !== null) {
+      // Resuming from pause — shift deadline forward by remaining time
+      deadlineAt   = Date.now() + pausedMsLeft;
+      pausedMsLeft = null;
+    } else {
+      // Fresh start
+      totalSeconds = isBreak ? getBreakSecs() : getWorkSecs();
+      secondsLeft  = totalSeconds;
+      deadlineAt   = Date.now() + totalSeconds * 1000;
+      sessionFired = false;
+    }
+    timerRunning = true;
+    document.getElementById("timer-btn").textContent = "Pause";
+    startRaf();
+  } else {
+    // Pause — snapshot how much time remains
+    pausedMsLeft = Math.max(0, deadlineAt - Date.now());
+    deadlineAt   = null;
+    timerRunning = false;
+    stopRaf();
+    document.getElementById("timer-btn").textContent = "Resume";
+  }
+}
+
+function resetTimer() {
+  stopRaf();
+  timerRunning = false;
+  deadlineAt   = null;
+  pausedMsLeft = null;
+  sessionFired = false;
+  isBreak      = false;
+  totalSeconds = getWorkSecs();
+  secondsLeft  = totalSeconds;
+  document.getElementById("timer-btn").textContent  = "Start";
+  document.getElementById("timer-phase").textContent = "Work session";
+  renderTimerDisplay(secondsLeft);
+}
+
+// --- Display ---
+
+function renderTimerDisplay(secs) {
+  const s = Math.max(0, secs);
+  const m = Math.floor(s / 60), ss = s % 60;
+  document.getElementById("timer-display").textContent =
+    String(m).padStart(2, "0") + ":" + String(ss).padStart(2, "0");
+  document.getElementById("timer-progress").style.width =
+    totalSeconds > 0 ? Math.min(100, Math.round((s / totalSeconds) * 100)) + "%" : "100%";
+}
+
+// --- Page Visibility API ---
+// When the tab becomes visible again after being hidden, browsers may have
+// throttled or paused rAF. We sync the display immediately on return so the
+// user never sees a stale number, and restart the rAF loop if needed.
+
+function onVisible() {
+  if (!timerRunning || !deadlineAt) return;
+  const msLeft = Math.max(0, deadlineAt - Date.now());
+  secondsLeft  = Math.ceil(msLeft / 1000);
+  renderTimerDisplay(secondsLeft);
+  if (msLeft <= 0 && !sessionFired) {
+    sessionFired = true;
+    stopRaf();
+    onPhaseEnd();
+  } else {
+    // Restart the rAF loop (it may have been suspended by the browser)
+    stopRaf();
+    startRaf();
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") onVisible();
+});
+
+// --- Misc ---
 
 function renderTimerGoalSelect() {
   const sel    = document.getElementById("timer-goal-select");
@@ -263,8 +432,8 @@ function updateTimerGoal() {
   const g = goals.find(g => g.id === currentGoalId);
   document.getElementById("timer-goal-name").textContent = g ? g.title : "No goal selected";
 
-  const sec    = document.getElementById("timer-subgoals-section");
-  const listEl = document.getElementById("timer-subgoals-list");
+  const sec     = document.getElementById("timer-subgoals-section");
+  const listEl  = document.getElementById("timer-subgoals-list");
   const pending = g ? (g.subgoals || []).filter(s => s.status === "pending") : [];
 
   if (g && pending.length) {
@@ -279,67 +448,10 @@ function updateTimerGoal() {
   }
 }
 
-function renderTimerDisplay() {
-  const m = Math.floor(secondsLeft / 60), s = secondsLeft % 60;
-  document.getElementById("timer-display").textContent =
-    String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
-  document.getElementById("timer-progress").style.width =
-    Math.round((secondsLeft / totalSeconds) * 100) + "%";
-  document.getElementById("timer-phase").textContent =
-    isBreak ? "Break time" : "Work session";
-}
-
 async function updateTodayCount() {
   const stats = await get("/api/stats");
   document.getElementById("session-count").textContent =
     "Pomodoros today: " + stats.today_pomos;
-}
-
-function toggleTimer() {
-  if (!timerRunning) {
-    if (!secondsLeft) secondsLeft = totalSeconds = isBreak ? getBreakSecs() : getWorkSecs();
-    timerRunning = true;
-    document.getElementById("timer-btn").textContent = "Pause";
-    timerInterval = setInterval(tick, 1000);
-  } else {
-    clearInterval(timerInterval);
-    timerRunning = false;
-    document.getElementById("timer-btn").textContent = "Resume";
-  }
-}
-
-async function tick() {
-  secondsLeft--;
-  if (secondsLeft <= 0) {
-    clearInterval(timerInterval);
-    timerRunning = false;
-    if (!isBreak) {
-      const mins = parseInt(document.getElementById("pomo-work").value) || 25;
-      if (currentGoalId) {
-        await post("/api/sessions", { goal_id: currentGoalId, mins });
-        await loadGoals();
-        await updateTodayCount();
-      }
-      isBreak     = true;
-      secondsLeft = totalSeconds = getBreakSecs();
-      document.getElementById("timer-btn").textContent = "Start break";
-      document.getElementById("timer-phase").textContent = "Work complete!";
-    } else {
-      isBreak     = false;
-      secondsLeft = totalSeconds = getWorkSecs();
-      document.getElementById("timer-btn").textContent = "Start";
-    }
-  }
-  renderTimerDisplay();
-}
-
-function resetTimer() {
-  clearInterval(timerInterval);
-  timerRunning = false;
-  isBreak      = false;
-  secondsLeft  = totalSeconds = getWorkSecs();
-  document.getElementById("timer-btn").textContent = "Start";
-  renderTimerDisplay();
 }
 
 // ---------------------------------------------------------------------------

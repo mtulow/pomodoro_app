@@ -1,0 +1,104 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),  
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- ...
+
+### Changed
+
+- ...
+
+### Fixed
+
+- ...
+
+### Removed
+
+- ...
+
+---
+
+## [1.3.0] - 2026-04-28
+
+### Changed
+
+- Replaced `setInterval`-based countdown with wall-clock anchoring using `deadlineAt` (`Date.now()` timestamp of phase end), making drift structurally impossible.
+- Replaced the `setInterval` render loop with a `requestAnimationFrame` loop (`rafTick`) for smooth, browser-native display updates at the display's refresh rate.
+- Pause now snapshots remaining milliseconds (`pausedMsLeft`); resume shifts `deadlineAt` forward by that exact amount so no time is lost or gained.
+
+### Added
+
+- Page Visibility API integration: `visibilitychange` listener calls `onVisible()` when the tab regains focus, immediately resyncing the display from wall-clock time and restarting the rAF loop.
+- `sessionFired` guard flag to ensure a completed session is logged exactly once even if the tab was hidden when the timer expired.
+
+### Removed
+
+- `timerInterval` state variable and all `setInterval` / `clearInterval` calls.
+
+---
+
+## [1.2.0] - 2026-04-27
+
+### Added
+
+- Free-text category input (`<input>` + `<datalist>`) replacing the fixed `<select>`, allowing any custom category to be entered (e.g. "Music", "Side project").
+- Default suggestions datalist pre-populated with: Work, Learning, Health, Personal, Finance, Creative, Other.
+- `catBadge()` function that maps known categories to badge colours and deterministically assigns a colour to unknown ones via a string hash.
+- `catDisplay()` function that title-cases stored category strings for display.
+- `refreshCatSuggestions()` function that merges goals in memory with `/api/categories` results to keep the datalist up to date across page reloads.
+- `/api/categories` endpoint (`GET`) returning all distinct categories currently stored in the database, sorted alphabetically.
+
+### Changed
+
+- `addGoal()` now reads the category text input instead of a select value, defaulting to "Other" if left blank.
+- `loadGoals()` now calls `refreshCatSuggestions()` after every fetch so newly created categories appear as suggestions immediately.
+- Removed hardcoded `catColors` and `catLabel` maps from `app.js`.
+
+---
+
+## [1.1.0] - 2026-04-27
+
+### Added
+
+- Sub-goals support: each goal can have any number of sub-goals with a `status` of `pending`, `done`, or `failed`.
+- Sub-goals panel per goal card (expand/collapse via ▼/▲ toggle showing sub-goal count).
+- Inline sub-goal entry (type and press Enter or click Add).
+- Done / Missed buttons per sub-goal; clicking the active status toggles it back to pending.
+- Sub-goal progress summary on each goal card (e.g. "2/3 done · 1 missed").
+- Pending sub-goals preview in the Pomodoro tab when a goal with open sub-goals is selected.
+- Sub-goal completion rate stat (% done of all tracked sub-goals) on the Log tab.
+- Done/Missed badge counts per goal on the Log tab time-by-goal bars.
+- `POST /api/goals/<id>/subgoals` — create a sub-goal.
+- `PATCH /api/subgoals/<id>` — update sub-goal status.
+- `DELETE /api/subgoals/<id>` — delete a sub-goal.
+- `subgoals` table in SQLite with `ON DELETE CASCADE` from `goals`.
+
+---
+
+## [1.0.0] - 2026-04-14
+
+### Added
+
+- Initial release of **pomodoro_app**.
+- Flask + SQLite backend with REST API (`goals`, `sessions`, `stats` endpoints).
+- Goals management: create, complete (checkbox), and delete goals with title, category, and optional description.
+- Pomodoro timer with configurable work and break durations.
+- Start, pause/resume, and reset controls.
+- Per-goal session logging: completed pomodoros are saved to the database with timestamp.
+- Log tab with total pomodoros, total focus time, per-goal time bars, and full session history.
+- Dark mode support via `prefers-color-scheme` CSS media query.
+- Auto-creation of `pomodoro.db` on first run via `init_db()`.
+
+---
+
+[Unreleased]: https://github.com/mtulow/pomodoro_app/compare/v1.3.0...HEAD  
+[1.3.0]: https://github.com/mtulow/pomodoro_app/compare/v1.2.0...v1.3.0  
+[1.2.0]: https://github.com/mtulow/pomodoro_app/compare/v1.1.0...v1.2.0  
+[1.1.0]: https://github.com/mtulow/pomodoro_app/compare/v1.0.0...v1.1.0  
+[1.0.0]: https://github.com/mtulow/pomodoro_app/releases/tag/v1.0.0
