@@ -147,6 +147,16 @@ def delete_goal(goal_id):
     return jsonify({"ok": True})
 
 
+@app.route("/api/categories", methods=["GET"])
+def get_categories():
+    """Return all distinct categories currently in use, sorted alphabetically."""
+    db = get_db()
+    rows = db.execute(
+        "SELECT DISTINCT category FROM goals WHERE category != '' ORDER BY category"
+    ).fetchall()
+    return jsonify([r["category"] for r in rows])
+
+
 # ---------------------------------------------------------------------------
 # Routes – Subgoals
 # ---------------------------------------------------------------------------

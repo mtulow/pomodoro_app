@@ -52,17 +52,20 @@ function switchTab(t) {
 
 async function loadGoals() {
   goals = await get("/api/goals");
+  refreshCatSuggestions();
   renderGoals();
 }
 
 async function addGoal() {
   const title = document.getElementById("goal-input").value.trim();
   if (!title) return;
+  const rawCat = document.getElementById("goal-cat").value.trim();
   await post("/api/goals", {
     title,
-    category: document.getElementById("goal-cat").value,
+    category: rawCat || "Other",
     note: document.getElementById("goal-note").value.trim(),
   });
+  document.getElementById("goal-cat").value = "";
   document.getElementById("goal-input").value = "";
   document.getElementById("goal-note").value  = "";
   await loadGoals();
@@ -114,8 +117,45 @@ async function deleteSubgoal(subId) {
 // Render helpers
 // ---------------------------------------------------------------------------
 
-const catColors = { work: "badge-info", learning: "badge-warn", health: "badge-success", personal: "badge-info", other: "" };
-const catLabel  = { work: "Work", learning: "Learning", health: "Health", personal: "Personal", other: "Other" };
+// Map well-known categories to badge colours; unknown ones cycle through the palette.
+const CAT_PRESETS = {
+  career: "badge-info", academics: "badge-warn", finance: "badge-warn", health: "badge-success",
+  athletics: "badge-info", other: "badge-info",
+};
+const BADGE_CYCLE = ["badge-info", "badge-warn", "badge-success"];
+const _catColorCache = {};
+
+function catBadge(cat) {
+  const key = (cat || "other").toLowerCase();
+  if (CAT_PRESETS[key]) return CAT_PRESETS[key];
+  if (!_catColorCache[key]) {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    _catColorCache[key] = BADGE_CYCLE[h % BADGE_CYCLE.length];
+  }
+  return _catColorCache[key];
+}
+
+function catDisplay(cat) {
+  if (!cat) return "Other";
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+// Keep a live list of categories seen so far to update the datalist suggestions
+async function refreshCatSuggestions() {
+  const seen = [...new Set(goals.map(g => g.category).filter(Boolean))];
+  // Also pull any categories stored in DB that might not be in current page state
+  let fromDb = [];
+  try { fromDb = await get("/api/categories"); } catch (_) {}
+  const defaults = ["Career","Academics","Finance","Health","Athletics","Other"];
+  const all = [...new Set([
+    ...defaults,
+    ...seen.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+    ...fromDb.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+  ])].sort();
+  const dl = document.getElementById("cat-suggestions");
+  if (dl) dl.innerHTML = all.map(c => `<option value="${esc(c)}">`).join("");
+}
 
 function formatMins(m) {
   m = Math.round(m || 0);
@@ -181,7 +221,7 @@ function renderGoals() {
             ${g.note ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(g.note)}</div>` : ""}
             ${prog ? `<div style="margin-top:4px">${progStr}</div>` : ""}
           </div>
-          <span class="badge ${catColors[g.category] || "badge-info"}">${catLabel[g.category] || g.category}</span>
+          <span class="badge ${catBadge(g.category)}">${esc(catDisplay(g.category))}</span>
           <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${g.pomos} · ${formatMins(g.total_mins)}</span>
           <button class="expand-btn" onclick="toggleExpand(${g.id})">${isExp ? "▲" : "▼"} ${subs.length}</button>
           <button class="btn btn-danger btn-sm" onclick="deleteGoal(${g.id})">✕</button>

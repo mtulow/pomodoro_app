@@ -24,13 +24,15 @@
       <div class="card">
         <div class="row" style="margin-bottom:8px">
           <input type="text" id="goal-input" placeholder="Goal title…" class="grow" />
-          <select id="goal-cat">
-            <option value="work">Work</option>
-            <option value="learning">Learning</option>
-            <option value="health">Health</option>
-            <option value="personal">Personal</option>
-            <option value="other">Other</option>
-          </select>
+          <input type="text" id="goal-cat" list="cat-suggestions" placeholder="Category…" style="width:140px" autocomplete="off" />
+          <datalist id="cat-suggestions">
+            <option value="Career">
+            <option value="Academics">
+            <option value="Finance">
+            <option value="Health">
+            <option value="Athletics">
+            <option value="Other">
+          </datalist>
         </div>
         <div class="row">
           <input type="text" id="goal-note" placeholder="Description (optional)…" class="grow" />
