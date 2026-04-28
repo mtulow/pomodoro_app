@@ -21,9 +21,8 @@ const del  = (path)        => api("DELETE", path);
 
 let goals    = [];
 let sessions = [];
-let categories = [];
+let expanded = {};
 let currentGoalId = null;
-let currentSubgoalId = null;   // track selected subgoal in timer
 
 // Timer state
 let timerInterval = null;
@@ -48,139 +47,75 @@ function switchTab(t) {
 }
 
 // ---------------------------------------------------------------------------
-// Categories
-// ---------------------------------------------------------------------------
-
-async function loadCategories() {
-  try {
-    categories = await get("/api/categories");
-    const datalist = document.getElementById("category-suggestions");
-    datalist.innerHTML = categories.map(c => `<option value="${esc(c)}">`).join("");
-  } catch (e) { /* endpoint might not exist yet; ignore */ }
-}
-
-// ---------------------------------------------------------------------------
 // Goals
 // ---------------------------------------------------------------------------
 
 async function loadGoals() {
   goals = await get("/api/goals");
   renderGoals();
-  renderTimerGoalSelect(); // update timer dropdown
 }
 
 async function addGoal() {
   const title = document.getElementById("goal-input").value.trim();
   if (!title) return;
-  const category = document.getElementById("goal-cat").value.trim() || "General";
-  const note = document.getElementById("goal-note").value.trim();
-  await post("/api/goals", { title, category, note });
+  await post("/api/goals", {
+    title,
+    category: document.getElementById("goal-cat").value,
+    note: document.getElementById("goal-note").value.trim(),
+  });
   document.getElementById("goal-input").value = "";
-  document.getElementById("goal-cat").value = "";
-  document.getElementById("goal-note").value = "";
-  await loadCategories(); // refresh datalist if new category
+  document.getElementById("goal-note").value  = "";
   await loadGoals();
 }
 
-// Called from edit button inside goal card
-function editGoal(btn) {
-  const card = btn.closest(".goal-card");
-  const goalId = parseInt(card.dataset.goalId);
-  const goal = goals.find(g => g.id === goalId);
-  if (!goal) return;
-  // Simple prompt-based edit (could be improved)
-  const newTitle = prompt("Edit goal title:", goal.title);
-  if (newTitle !== null && newTitle.trim()) {
-    patch(`/api/goals/${goalId}`, { title: newTitle.trim() }).then(loadGoals);
-  }
+async function toggleGoalDone(id) {
+  const g = goals.find(g => g.id === id);
+  if (!g) return;
+  await patch(`/api/goals/${id}`, { done: !g.done });
+  await loadGoals();
 }
 
-// Called from delete button inside goal card
-async function deleteGoal(btn) {
-  const card = btn.closest(".goal-card");
-  const goalId = parseInt(card.dataset.goalId);
+async function deleteGoal(id) {
   if (!confirm("Delete this goal and all its sessions?")) return;
-  await del(`/api/goals/${goalId}`);
+  await del(`/api/goals/${id}`);
   await loadGoals();
 }
 
-async function toggleGoalDone(goalId, checked) {
-  await patch(`/api/goals/${goalId}`, { done: checked });
-  await loadGoals();
+function toggleExpand(id) {
+  expanded[id] = !expanded[id];
+  renderGoals();
 }
 
 // ---------------------------------------------------------------------------
 // Sub-goals
 // ---------------------------------------------------------------------------
 
-function toggleAddSubgoal(btn) {
-  const card = btn.closest(".goal-card");
-  const form = card.querySelector(".add-subgoal-form");
-  form.style.display = form.style.display === "none" ? "block" : "none";
-  if (form.style.display === "block") {
-    form.querySelector(".subgoal-title-input").focus();
-  }
-}
-
-async function addSubgoal(btn) {
-  const card = btn.closest(".goal-card");
-  const goalId = parseInt(card.dataset.goalId);
-  const form = card.querySelector(".add-subgoal-form");
-  const titleInput = form.querySelector(".subgoal-title-input");
-  const noteInput = form.querySelector(".subgoal-note-input");
-  const title = titleInput.value.trim();
-  if (!title) return;
-
-  const body = { title };
-  if (noteInput.value.trim()) body.note = noteInput.value.trim();
-
-  await post(`/api/goals/${goalId}/subgoals`, body);
-  titleInput.value = "";
-  noteInput.value = "";
-  form.style.display = "none";
+async function addSubgoal(goalId) {
+  const inp  = document.getElementById("sub-inp-" + goalId);
+  const text = inp.value.trim();
+  if (!text) return;
+  await post(`/api/goals/${goalId}/subgoals`, { title: text });
+  inp.value = "";
   await loadGoals();
 }
 
-async function updateSubgoalStatus(radio) {
-  const subgoalEl = radio.closest(".subgoal-item");
-  const subgoalId = parseInt(subgoalEl.dataset.subgoalId);
-  const status = radio.value; // 'pending', 'done', 'failed'
-  await patch(`/api/subgoals/${subgoalId}`, { status });
+async function setSubStatus(subId, currentStatus, newStatus) {
+  const status = currentStatus === newStatus ? "pending" : newStatus;
+  await patch(`/api/subgoals/${subId}`, { status });
   await loadGoals();
 }
 
-async function deleteSubgoal(btn) {
-  const subgoalEl = btn.closest(".subgoal-item");
-  const subgoalId = parseInt(subgoalEl.dataset.subgoalId);
-  if (!confirm("Delete this sub-goal?")) return;
-  await del(`/api/subgoals/${subgoalId}`);
+async function deleteSubgoal(subId) {
+  await del(`/api/subgoals/${subId}`);
   await loadGoals();
-}
-
-async function editSubgoalNote(btn) {
-  const subgoalEl = btn.closest(".subgoal-item");
-  const subgoalId = parseInt(subgoalEl.dataset.subgoalId);
-  const noteSpan = subgoalEl.querySelector(".subgoal-note span");
-  const currentNote = noteSpan.textContent;
-  const newNote = prompt("Edit note:", currentNote);
-  if (newNote !== null) {
-    await fetch(`/api/subgoals/${subgoalId}/note`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note: newNote.trim() })
-    });
-    await loadGoals();
-  }
 }
 
 // ---------------------------------------------------------------------------
 // Render helpers
 // ---------------------------------------------------------------------------
 
-const catColors = { 
-  work: "badge-info", learning: "badge-warn", health: "badge-success", 
-  personal: "badge-info", general: "badge-secondary", other: "badge-secondary" 
-};
+const catColors = { work: "badge-info", learning: "badge-warn", health: "badge-success", personal: "badge-info", other: "" };
+const catLabel  = { work: "Work", learning: "Learning", health: "Health", personal: "Personal", other: "Other" };
 
 function formatMins(m) {
   m = Math.round(m || 0);
@@ -197,90 +132,63 @@ function subProgress(g) {
 }
 
 function renderGoals() {
-  const container = document.getElementById("goals-list");
-  if (!goals.length) {
-    container.innerHTML = '<div class="empty">No goals yet — add one above.</div>';
-    return;
-  }
+  const el = document.getElementById("goals-list");
+  if (!goals.length) { el.innerHTML = '<div class="empty">No goals yet — add one above.</div>'; return; }
 
-  const template = document.getElementById("goal-card-template");
-  container.innerHTML = "";
+  el.innerHTML = goals.map(g => {
+    const subs  = g.subgoals || [];
+    const prog  = subProgress(g);
+    const isExp = expanded[g.id];
 
-  goals.forEach(g => {
-    const clone = template.content.cloneNode(true);
-    const card = clone.querySelector(".goal-card");
-    card.dataset.goalId = g.id;
+    const progStr = prog
+      ? `<span style="font-size:12px;color:var(--text-secondary)">${prog.done}/${prog.total} done${prog.failed ? ` · ${prog.failed} missed` : ""}</span>`
+      : "";
 
-    // Goal header
-    card.querySelector(".goal-title").textContent = g.title;
-    const catSpan = card.querySelector(".goal-category");
-    catSpan.textContent = g.category || "General";
-    catSpan.classList.add("badge", catColors[g.category?.toLowerCase()] || "badge-secondary");
+    const subItems = subs.map(s => `
+      <div class="sub-item ${s.status === "done" ? "done-sub" : s.status === "failed" ? "failed-sub" : ""}">
+        <span class="sub-title">${esc(s.title)}</span>
+        <button class="btn btn-sm ${s.status === "done" ? "btn-primary" : ""}"
+          onclick="setSubStatus(${s.id},'${s.status}','done')">
+          ${s.status === "done" ? "✓ Done" : "Done"}
+        </button>
+        <button class="btn btn-sm ${s.status === "failed" ? "btn-danger" : ""}"
+          onclick="setSubStatus(${s.id},'${s.status}','failed')">
+          ${s.status === "failed" ? "✕ Missed" : "Missed"}
+        </button>
+        <button class="btn btn-sm" style="color:var(--text-tertiary)"
+          onclick="deleteSubgoal(${s.id})">×</button>
+      </div>`).join("");
 
-    // Note
-    const noteDiv = card.querySelector(".goal-note");
-    if (g.note) {
-      noteDiv.textContent = g.note;
-      noteDiv.style.display = "block";
-    } else {
-      noteDiv.style.display = "none";
-    }
+    const subSection = isExp ? `
+      <div class="sub-list">
+        ${subItems}
+        <div class="sub-add-row">
+          <input type="text" id="sub-inp-${g.id}" placeholder="Add sub-goal…"
+            style="flex:1;font-size:13px"
+            onkeydown="if(event.key==='Enter') addSubgoal(${g.id})" />
+          <button class="btn btn-sm" onclick="addSubgoal(${g.id})">Add</button>
+        </div>
+      </div>` : "";
 
-    // Stats
-    card.querySelector(".pomo-count").textContent = g.pomos || 0;
-    card.querySelector(".mins-count").textContent = g.total_mins || 0;
-
-    // Subgoals list
-    const subs = g.subgoals || [];
-    const subgoalsList = card.querySelector(".subgoals-list");
-    const subTemplate = document.getElementById("subgoal-item-template");
-
-    subs.forEach(s => {
-      const subClone = subTemplate.content.cloneNode(true);
-      const subEl = subClone.querySelector(".subgoal-item");
-      subEl.dataset.subgoalId = s.id;
-
-      const titleSpan = subEl.querySelector(".subgoal-title");
-      titleSpan.textContent = s.title;
-      if (s.status === "done") titleSpan.style.textDecoration = "line-through";
-
-      // Radio buttons
-      const radios = subEl.querySelectorAll(".subgoal-radio");
-      radios.forEach(r => {
-        r.checked = (r.value === s.status);
-        r.name = `subgoal-status-${s.id}`; // unique per subgoal
-      });
-
-      // Pomodoro count if any
-      const pomoSpan = subEl.querySelector(".subgoal-pomos");
-      if (s.pomos > 0) {
-        pomoSpan.textContent = `🍅 ${s.pomos}`;
-      }
-
-      // Note
-      const noteDiv = subEl.querySelector(".subgoal-note span");
-      if (s.note) {
-        noteDiv.textContent = s.note;
-        noteDiv.parentElement.style.display = "flex";
-      } else {
-        noteDiv.parentElement.style.display = "none";
-      }
-
-      subgoalsList.appendChild(subEl);
-    });
-
-    // Done checkbox in goal header? Not in template, but we can add one
-    // The template doesn't have a done checkbox; we'll add it programmatically
-    const header = card.querySelector(".goal-header");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.checked = g.done;
-    checkbox.style.marginRight = "8px";
-    checkbox.addEventListener("change", (e) => toggleGoalDone(g.id, e.target.checked));
-    header.insertBefore(checkbox, header.firstChild);
-
-    container.appendChild(card);
-  });
+    return `
+      <div class="card-flat" style="opacity:${g.done ? .55 : 1}">
+        <div class="row">
+          <input type="checkbox" ${g.done ? "checked" : ""}
+            onchange="toggleGoalDone(${g.id})"
+            style="cursor:pointer;width:16px;height:16px;flex-shrink:0" />
+          <div class="grow">
+            <div style="font-size:15px;font-weight:500;text-decoration:${g.done ? "line-through" : "none"};color:var(--text)">${esc(g.title)}</div>
+            ${g.note ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px">${esc(g.note)}</div>` : ""}
+            ${prog ? `<div style="margin-top:4px">${progStr}</div>` : ""}
+          </div>
+          <span class="badge ${catColors[g.category] || "badge-info"}">${catLabel[g.category] || g.category}</span>
+          <span style="font-size:12px;color:var(--text-secondary);white-space:nowrap">${g.pomos} · ${formatMins(g.total_mins)}</span>
+          <button class="expand-btn" onclick="toggleExpand(${g.id})">${isExp ? "▲" : "▼"} ${subs.length}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteGoal(${g.id})">✕</button>
+        </div>
+        ${subSection}
+      </div>`;
+  }).join("");
 }
 
 function esc(str) {
@@ -317,43 +225,18 @@ function updateTimerGoal() {
 
   const sec    = document.getElementById("timer-subgoals-section");
   const listEl = document.getElementById("timer-subgoals-list");
-  const noteDiv = document.getElementById("timer-subgoal-note");
   const pending = g ? (g.subgoals || []).filter(s => s.status === "pending") : [];
 
   if (g && pending.length) {
-    sec.style.display = "block";
-    listEl.innerHTML = pending.map(s => `
-      <div class="subgoal-selector" data-subgoal-id="${s.id}" onclick="selectTimerSubgoal(${s.id})">
-        <span class="subgoal-selector-title">${esc(s.title)}</span>
-        ${s.note ? '<i class="fas fa-sticky-note"></i>' : ''}
+    sec.style.display = "";
+    listEl.innerHTML  = pending.map(s => `
+      <div class="sub-item">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--text-tertiary);display:inline-block;flex-shrink:0"></span>
+        <span style="font-size:13px;color:var(--text-secondary)">${esc(s.title)}</span>
       </div>`).join("");
-    // If a subgoal was previously selected, highlight it
-    if (currentSubgoalId) {
-      const selectedEl = listEl.querySelector(`[data-subgoal-id="${currentSubgoalId}"]`);
-      if (selectedEl) selectedEl.classList.add("selected");
-    }
   } else {
     sec.style.display = "none";
-    noteDiv.style.display = "none";
-    currentSubgoalId = null;
   }
-}
-
-function selectTimerSubgoal(subgoalId) {
-  currentSubgoalId = subgoalId;
-  const g = goals.find(g => g.id === currentGoalId);
-  const sub = g?.subgoals?.find(s => s.id === subgoalId);
-  const noteDiv = document.getElementById("timer-subgoal-note");
-  if (sub && sub.note) {
-    noteDiv.innerHTML = `<i class="fas fa-sticky-note"></i> ${esc(sub.note)}`;
-    noteDiv.style.display = "block";
-  } else {
-    noteDiv.style.display = "none";
-  }
-  // Highlight selected
-  document.querySelectorAll("#timer-subgoals-list .subgoal-selector").forEach(el => {
-    el.classList.toggle("selected", el.dataset.subgoalId == subgoalId);
-  });
 }
 
 function renderTimerDisplay() {
@@ -393,9 +276,7 @@ async function tick() {
     if (!isBreak) {
       const mins = parseInt(document.getElementById("pomo-work").value) || 25;
       if (currentGoalId) {
-        const sessionData = { goal_id: currentGoalId, mins };
-        if (currentSubgoalId) sessionData.subgoal_id = currentSubgoalId;
-        await post("/api/sessions", sessionData);
+        await post("/api/sessions", { goal_id: currentGoalId, mins });
         await loadGoals();
         await updateTodayCount();
       }
@@ -433,19 +314,6 @@ async function loadLog() {
   document.getElementById("stat-hours").textContent    = formatMins(stats.total_mins);
   document.getElementById("stat-subgoals").textContent = stats.sub_pct !== null ? stats.sub_pct + "%" : "—";
 
-  // Category breakdown
-  const catLogEl = document.getElementById("log-by-category");
-  if (stats.categories && stats.categories.length) {
-    catLogEl.innerHTML = stats.categories.map(cat => `
-      <div class="log-row">
-        <span>${esc(cat.category)}</span>
-        <span class="badge">${cat.count} goals</span>
-      </div>`).join("");
-  } else {
-    catLogEl.innerHTML = '<div class="empty">No categories yet.</div>';
-  }
-
-  // Goal breakdown
   const goalLogEl = document.getElementById("log-by-goal");
   if (!stats.by_goal.length) {
     goalLogEl.innerHTML = '<div class="empty" style="padding:1rem 0">No data yet.</div>';
@@ -464,22 +332,17 @@ async function loadLog() {
     }).join("") || '<div class="empty" style="padding:1rem 0">No sessions yet.</div>';
   }
 
-  // Session history
   const logEl = document.getElementById("log-list");
-  if (!sessions.length) {
-    logEl.innerHTML = '<div class="empty">No sessions logged yet.</div>';
-    return;
-  }
+  if (!sessions.length) { logEl.innerHTML = '<div class="empty">No sessions logged yet.</div>'; return; }
   logEl.innerHTML = sessions.map(s => `
     <div class="log-row">
       <div>
         <div style="font-weight:500;font-size:14px">${esc(s.goal_title || "Deleted goal")}</div>
-        ${s.subgoal_title ? `<div style="font-size:12px;color:var(--text-secondary)">↳ ${esc(s.subgoal_title)}</div>` : ""}
         <div style="color:var(--text-secondary);font-size:12px">${s.date} · ${s.ts}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:14px">${s.mins} min</div>
-        <span class="badge badge-success" style="font-size:10px">🍅</span>
+        <span class="badge badge-success" style="font-size:10px">done</span>
       </div>
     </div>`).join("");
 }
@@ -489,7 +352,6 @@ async function loadLog() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadCategories();
   await loadGoals();
   initTimer();
   updateTodayCount();
@@ -497,19 +359,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("goal-input").addEventListener("keydown", e => {
     if (e.key === "Enter") addGoal();
   });
-
-  // Expose functions for inline onclick handlers
-  window.switchTab = switchTab;
-  window.addGoal = addGoal;
-  window.editGoal = editGoal;
-  window.deleteGoal = deleteGoal;
-  window.toggleAddSubgoal = toggleAddSubgoal;
-  window.addSubgoal = addSubgoal;
-  window.updateSubgoalStatus = updateSubgoalStatus;
-  window.deleteSubgoal = deleteSubgoal;
-  window.editSubgoalNote = editSubgoalNote;
-  window.selectTimerSubgoal = selectTimerSubgoal;
-  window.toggleTimer = toggleTimer;
-  window.resetTimer = resetTimer;
-  window.updateTimerGoal = updateTimerGoal;
 });

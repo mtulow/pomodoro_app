@@ -3,8 +3,6 @@
 A local productivity app with goals, sub-goals, and Pomodoro time tracking.
 Built with Python (Flask) + SQLite backend and a vanilla JS/HTML frontend.
 
----
-
 ## Setup
 
 **Requirements:** Python 3.8+
@@ -29,12 +27,10 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Then open <http://localhost:5000> in your browser.
+Then open http://localhost:5000 in your browser.
 
 The SQLite database file (`pomodoro.db`) is created automatically on first run
 in the same directory as `app.py`. Your data persists between sessions.
-
----
 
 ## Project structure
 
@@ -52,8 +48,6 @@ pomodoro_app/
         └── app.js          # All frontend logic (talks to the API)
 ```
 
----
-
 ## API endpoints
 
 | Method | Path | Description |
@@ -68,9 +62,3 @@ pomodoro_app/
 | GET | `/api/sessions` | List all Pomodoro sessions |
 | POST | `/api/sessions` | Log a completed Pomodoro session |
 | GET | `/api/stats` | Aggregate stats (totals, by-goal, sub-goal %) |
-
----
-
-## TODOs: Advanced Features and Functionality
-
----

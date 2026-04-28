@@ -5,64 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pomodoro Tracker</title>
   <link rel="stylesheet" href="/static/css/style.css" />
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <h1>🍅 Pomodoro Tracker</h1>
+      <h1>Pomodoro Tracker</h1>
     </header>
 
     <nav class="tabs" id="tabs">
       <button class="tab active" onclick="switchTab('goals')">Goals</button>
-      <button class="tab" onclick="switchTab('timer')">Timer</button>
+      <button class="tab" onclick="switchTab('timer')">Pomodoro</button>
       <button class="tab" onclick="switchTab('log')">Log</button>
     </nav>
 
-    <!-- ========== GOALS TAB ========== -->
+    <!-- GOALS TAB -->
     <section id="tab-goals">
-      <!-- Add Goal Form -->
-      <div class="section-label">➕ Add a goal</div>
+      <div class="section-label">Add a goal</div>
       <div class="card">
-        <div class="form-row">
+        <div class="row" style="margin-bottom:8px">
           <input type="text" id="goal-input" placeholder="Goal title…" class="grow" />
+          <select id="goal-cat">
+            <option value="work">Work</option>
+            <option value="learning">Learning</option>
+            <option value="health">Health</option>
+            <option value="personal">Personal</option>
+            <option value="other">Other</option>
+          </select>
         </div>
-        <div class="form-row">
-          <input type="text" id="goal-cat" placeholder="Category (e.g., Work, Health)" list="category-suggestions" class="grow" />
-          <datalist id="category-suggestions"></datalist>
-        </div>
-        <div class="form-row">
+        <div class="row">
           <input type="text" id="goal-note" placeholder="Description (optional)…" class="grow" />
-        </div>
-        <div class="form-row">
-          <button class="btn btn-primary" onclick="addGoal()">Add Goal</button>
+          <button class="btn btn-primary" onclick="addGoal()">Add goal</button>
         </div>
       </div>
-
-      <!-- Goals List -->
-      <div class="section-label" style="margin-top:1.5rem">📋 Your goals</div>
+      <div class="section-label" style="margin-top:1.25rem">Your goals</div>
       <div id="goals-list"><div class="empty">Loading…</div></div>
     </section>
 
-    <!-- ========== TIMER TAB ========== -->
+    <!-- TIMER TAB -->
     <section id="tab-timer" style="display:none">
       <div class="card" style="margin-bottom:12px">
-        <div class="section-label">🎯 Select goal for this session</div>
+        <div class="section-label" style="margin-bottom:8px">Select goal for this session</div>
         <select id="timer-goal-select" style="width:100%;margin-bottom:12px" onchange="updateTimerGoal()">
           <option value="">— choose a goal —</option>
         </select>
-
-        <!-- Sub-goals for selected goal -->
         <div id="timer-subgoals-section" style="display:none;margin-bottom:12px">
-          <div class="section-label">📌 Pending sub-goals</div>
+          <div class="section-label" style="margin-bottom:6px">Pending sub-goals</div>
           <div id="timer-subgoals-list"></div>
         </div>
-
-        <!-- Selected sub-goal note display -->
-        <div id="timer-subgoal-note" class="subgoal-note-display" style="display:none"></div>
-
-        <!-- Timer settings -->
         <div class="row" style="justify-content:center;gap:16px;margin-bottom:4px">
           <div style="text-align:center">
             <div class="section-label">Work (min)</div>
@@ -74,8 +63,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Timer Display Card -->
       <div class="card" style="text-align:center">
         <div class="timer-label" id="timer-phase">Work session</div>
         <div class="timer-goal" id="timer-goal-name">No goal selected</div>
@@ -89,90 +76,19 @@
       </div>
     </section>
 
-    <!-- ========== LOG TAB ========== -->
+    <!-- LOG TAB -->
     <section id="tab-log" style="display:none">
-      <!-- Stats Cards -->
       <div class="stats-grid">
         <div class="mc"><div class="stat-num" id="stat-total">—</div><div class="stat-lbl">Total pomodoros</div></div>
         <div class="mc"><div class="stat-num" id="stat-hours">—</div><div class="stat-lbl">Total focus time</div></div>
         <div class="mc"><div class="stat-num" id="stat-subgoals">—</div><div class="stat-lbl">Sub-goals done</div></div>
       </div>
-
-      <!-- Category breakdown -->
-      <div class="section-label">📊 By category</div>
-      <div id="log-by-category" style="margin-bottom:1rem"></div>
-
-      <!-- Goal breakdown -->
-      <div class="section-label">🎯 By goal</div>
+      <div class="section-label">Time by goal</div>
       <div id="log-by-goal" style="margin-bottom:1rem"></div>
-
-      <!-- Session history -->
-      <div class="section-label">📅 Session history</div>
+      <div class="section-label">Session history</div>
       <div class="card" id="log-list"><div class="empty">Loading…</div></div>
     </section>
   </div>
-
-  <!-- Hidden template for goal card (used by JS) -->
-  <template id="goal-card-template">
-    <div class="goal-card" data-goal-id="">
-      <div class="goal-header">
-        <div class="goal-title-section">
-          <span class="goal-title"></span>
-          <span class="goal-category"></span>
-        </div>
-        <div class="goal-actions">
-          <button class="btn-icon" title="Edit goal" onclick="editGoal(this)"><i class="fas fa-edit"></i></button>
-          <button class="btn-icon" title="Delete goal" onclick="deleteGoal(this)"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-      <div class="goal-note"></div>
-      <div class="goal-stats">
-        <span>🍅 <span class="pomo-count">0</span></span>
-        <span>⏱️ <span class="mins-count">0</span> min</span>
-      </div>
-
-      <!-- Sub-goals section -->
-      <div class="subgoals-section">
-        <div class="subgoals-header">
-          <span class="section-label">📝 Sub-goals</span>
-          <button class="btn-sm" onclick="toggleAddSubgoal(this)">+ Add</button>
-        </div>
-
-        <!-- Add subgoal form (hidden by default) -->
-        <div class="add-subgoal-form" style="display:none">
-          <input type="text" class="subgoal-title-input" placeholder="Sub-goal title" />
-          <input type="text" class="subgoal-note-input" placeholder="Notes (optional)" />
-          <div class="form-row">
-            <button class="btn-sm btn-primary" onclick="addSubgoal(this)">Save</button>
-            <button class="btn-sm" onclick="toggleAddSubgoal(this)">Cancel</button>
-          </div>
-        </div>
-
-        <!-- Sub-goals list -->
-        <div class="subgoals-list"></div>
-      </div>
-    </div>
-  </template>
-
-  <!-- Hidden template for sub-goal item -->
-  <template id="subgoal-item-template">
-    <div class="subgoal-item" data-subgoal-id="">
-      <div class="subgoal-main">
-        <input type="radio" name="subgoal-status" class="subgoal-radio" onchange="updateSubgoalStatus(this)" value="pending" />
-        <input type="radio" name="subgoal-status" class="subgoal-radio" onchange="updateSubgoalStatus(this)" value="done" />
-        <input type="radio" name="subgoal-status" class="subgoal-radio" onchange="updateSubgoalStatus(this)" value="failed" />
-        <span class="subgoal-title"></span>
-        <span class="subgoal-pomos"></span>
-      </div>
-      <div class="subgoal-note">
-        <i class="fas fa-sticky-note"></i> <span></span>
-      </div>
-      <div class="subgoal-actions">
-        <button class="btn-icon-sm" title="Edit note" onclick="editSubgoalNote(this)"><i class="fas fa-pencil-alt"></i></button>
-        <button class="btn-icon-sm" title="Delete" onclick="deleteSubgoal(this)"><i class="fas fa-times"></i></button>
-      </div>
-    </div>
-  </template>
 
   <script src="/static/js/app.js"></script>
 </body>

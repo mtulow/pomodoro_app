@@ -131,14 +131,6 @@ input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0,0,0,0.06); }
 
-/* Form rows */
-.form-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.form-row:last-child { margin-bottom: 0; }
-
 /* ── Buttons ── */
 .btn {
   cursor: pointer;
@@ -158,25 +150,6 @@ select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0
 .btn-danger { color: var(--text-danger); border-color: var(--bg-danger); }
 .btn-danger:hover { background: var(--bg-danger); }
 .btn-sm { padding: 3px 8px; font-size: 12px; }
-
-/* Icon buttons */
-.btn-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  color: var(--text-tertiary);
-  border-radius: var(--radius-md);
-  transition: background 0.15s, color 0.15s;
-}
-.btn-icon:hover {
-  background: var(--bg-secondary);
-  color: var(--text);
-}
-.btn-icon-sm {
-  padding: 2px 4px;
-  font-size: 12px;
-}
 
 /* ── Utility ── */
 .row { display: flex; align-items: center; gap: 10px; }
@@ -204,187 +177,6 @@ select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0
 .badge-success { background: var(--bg-success);  color: var(--text-success); }
 .badge-warn    { background: var(--bg-warning);  color: var(--text-warning); }
 .badge-danger  { background: var(--bg-danger);   color: var(--text-danger); }
-.badge-secondary {
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 0.5px solid var(--border);
-}
-
-/* ── Goal Cards (template based) ── */
-.goal-card {
-  background: var(--bg);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 12px;
-}
-
-.goal-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-.goal-title-section {
-  flex: 1;
-  min-width: 0;
-}
-.goal-title {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text);
-  margin-right: 8px;
-}
-.goal-category {
-  margin-left: 8px;
-}
-.goal-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-.goal-note {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  padding-left: 24px; /* align with checkbox */
-}
-.goal-stats {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-  padding-left: 24px;
-}
-
-/* Sub-goals section inside goal card */
-.subgoals-section {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 0.5px solid var(--border);
-}
-.subgoals-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.subgoals-header .section-label {
-  margin-bottom: 0;
-}
-
-.add-subgoal-form {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 10px;
-  margin-bottom: 12px;
-}
-.add-subgoal-form input {
-  width: 100%;
-  margin-bottom: 8px;
-}
-.add-subgoal-form .form-row {
-  margin-bottom: 0;
-}
-
-/* Subgoal items */
-.subgoal-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.subgoal-item:last-child { border-bottom: none; }
-
-.subgoal-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.subgoal-radio {
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-.subgoal-title {
-  font-size: 14px;
-  color: var(--text);
-}
-.subgoal-pomos {
-  font-size: 11px;
-  color: var(--text-tertiary);
-  margin-left: 4px;
-}
-.subgoal-note {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-  margin-left: 32px; /* align with title */
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: 100%;
-}
-.subgoal-note i {
-  font-size: 11px;
-  opacity: 0.7;
-}
-.subgoal-actions {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-/* Timer tab subgoal selector */
-.subgoal-selector {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  margin-bottom: 6px;
-  cursor: pointer;
-  border: 0.5px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-.subgoal-selector:hover {
-  background: var(--bg);
-  border-color: var(--border);
-}
-.subgoal-selector.selected {
-  background: var(--bg-info);
-  border-color: var(--text-info);
-}
-.subgoal-selector-title {
-  flex: 1;
-  font-size: 14px;
-}
-.subgoal-selector i {
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
-.subgoal-note-display {
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
-  margin: 8px 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-.subgoal-note-display i {
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
 
 /* ── Timer ── */
 .timer-display {
@@ -402,6 +194,18 @@ select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0
 .timer-footer { margin-top: 12px; font-size: 12px; color: var(--text-tertiary); }
 .pb-bg { height: 4px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 1rem; }
 .pb-fill { height: 100%; border-radius: 4px; background: var(--text); transition: width 1s linear; }
+
+/* ── Sub-goals ── */
+.sub-list { margin-top: 8px; padding-left: 8px; border-left: 2px solid var(--border); }
+.sub-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.sub-item .sub-title { flex: 1; color: var(--text); }
+.sub-item.done-sub .sub-title { text-decoration: line-through; color: var(--text-tertiary); }
+.sub-item.failed-sub .sub-title { text-decoration: line-through; color: var(--text-danger); }
+.sub-add-row { display: flex; gap: 6px; margin-top: 6px; padding-left: 8px; }
+.expand-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-secondary); padding: 0 4px;
+}
 
 /* ── Stats & Log ── */
 .stats-grid {
@@ -423,9 +227,3 @@ select:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 2px rgba(0
   border-bottom: 0.5px solid var(--border);
 }
 .log-row:last-child { border-bottom: none; }
-
-/* Responsive adjustments */
-@media (max-width: 480px) {
-  .app { padding: 1rem 0.75rem 3rem; }
-  .timer-display { font-size: 42px; }
-}
